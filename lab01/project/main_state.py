@@ -43,9 +43,17 @@ class Boy:
 
 class Boss:
     def __init__(self):
-        self.image=load_image('boss.png')
+        self.x,self.y=0,300
+        self.frame = 0
+        self.image=load_image('boss_sheet.png')
+
+    def update(self):
+        self.frame=random.randint(0,8)
+        self.x=self.x+1
+                             
     def draw(self):
-        self.image.draw(300,300)
+        #self.image.draw(300,300)
+        self.image.clip_draw(self.frame*600,0,600,600,self.x,self.y)
         
 
 class Background:
@@ -79,6 +87,7 @@ def handle_events():
 
 def update():
     boy.update()
+    boss.update()
 
 def draw():
     clear_canvas()
