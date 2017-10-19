@@ -59,8 +59,15 @@ class Boss:
 class Background:
     def __init__(self):
         self.image=load_image('bg.png')
+        self.x=0
+
+    def update(self):
+        self.x=self.x-1
+        
     def draw(self):
-        self.image.draw(600,300)
+        self.image.draw(600+self.x,300)
+        self.image.draw(1800+self.x,300)
+        self.image.draw(3000+self.x,300)
 
 def enter():
     global boy, bg, boss
@@ -88,6 +95,7 @@ def handle_events():
 def update():
     boy.update()
     boss.update()
+    bg.update()
 
 def draw():
     clear_canvas()
