@@ -145,41 +145,57 @@ def collide(a,b):
 
     return True
 
-open_canvas()
-global boy, grass, ball
-grass = Grass()
-boy = Boy()
-big_balls = [BigBall() for i in range(10)]
-balls = [Ball() for i in range(10)]
-balls = big_balls+balls
-team = [Boy() for i in range(1)]
+def enter():
+    global running
+    running = True
+    
+    open_canvas()
+    global grass,boy,balls,big_balls,team
+    grass = Grass()
+    boy = Boy()
+    big_balls = [BigBall() for i in range(10)]
+    balls = [Ball() for i in range(10)]
+    balls = big_balls+balls
+    team = [Boy() for i in range(1)]
 
- 
-global running
-running = True
-
-start_time=get_time()
-
-while(running):
-    frame_time = get_frame_time()
-    handle_events()
+def update(frame_time):
     for boy in team:
         boy.update(frame_time)
-    #boy.update(frame_time)
+        
     for ball in balls:
         ball.update(frame_time)
+        
     for ball in balls:
         if collide(boy, ball):
             balls.remove(ball)
+            
     for ball in big_balls:
         if collide(grass,ball):
             ball.stop()
 
-    #ball.update(frame_time)
-    #if collide(boy,ball):
-        #print("aaaaa")
-        #ball.remove(ball)
- 
+def draw(frame_time):
+    clear_canvas()
+    grass.draw()
+    for ball in balls:
+        ball.draw()
+    for boy in team:
+        boy.draw()
+    boy.draw_bb()
+    for ball in balls:
+        ball.draw_bb()
+    update_canvas()
+
+
+
+enter()
+start_time=get_time()
+
+while(running):
+    frame_time = get_frame_time()
+
+    handle_events()
+    update(frame_time)
+
     clear_canvas()
     grass.draw()
     for ball in balls:
