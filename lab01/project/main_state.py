@@ -75,6 +75,8 @@ class Player:
         elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_RIGHT):
             self.state = self.RUN_STATE
             self.index=self.RIGHT
+        elif (event.type, event.key) == (SDL_KEYUP, SDLK_UP):
+            self.state = self.GUN_UP
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_LEFT):
             self.state = self.IDLE_STATE
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_RIGHT):
@@ -91,7 +93,6 @@ class Boss:
         self.x=self.x+1
                              
     def draw(self):
-        #self.image.draw(300,300)
         self.image.clip_draw(self.frame*600,0,600,600,self.x,self.y)
         
 
@@ -101,27 +102,51 @@ class Background:
         self.x=0
 
     def update(self):
-        self.x=self.x-1
+        self.x=self.x-2
         
     def draw(self):
         self.image.draw(600+self.x,300)
         self.image.draw(1800+self.x,300)
         self.image.draw(3000+self.x,300)
 
+class Ruin:
+    image = None
+
+    def __init__(self):
+        self.x,self.y=random.randint(800,1200),90
+        self.frame=random.randint(0,3)
+        
+        if Ruin.image == None:
+            Ruin.image=load_image('ruins.png')
+
+    def update(self):
+        self.x=self.x-2
+
+    def draw(self):
+        self.image.clip_draw(self.frame*80,0,80,100,self.x,self.y)
+        
+
+    def get_bb(self):
+        return self.x-40, self.y-50,self.x+40,self.y+50
+        
+
 def enter():
-    global bg, boss, player
+    global bg, boss, player, ruin, ruins
     player = Player()
     boss = Boss()
     bg = Background()
+    ruin = Ruin()
+    ruins = [Ruin() for i in range(1)]
 
 def exit():
-    global bg, boss, player
+    global bg, boss, player, ruin, ruins
     del(bg)
     del(boss)
     del(player)
+    del(ruin)
+    del(ruins)
     
 def handle_events():
-    global running
     events=get_events()
     for event in events:
         if event.type==SDL_QUIT:
@@ -135,11 +160,26 @@ def update():
     player.update()
     boss.update()
     bg.update()
+    for ruin in ruins:
+        ruin.update()
         
 def draw():
     clear_canvas()
     bg.draw()
     player.draw()
+    for ruin in ruins:
+        ruin.draw()
     boss.draw()
     update_canvas()
     delay(0.05)
+
+def collide(a,b):
+    left_a, bottom_a, right_a, top_a = a.get_bb()
+    left_b, bottom_b, right_b, top_b = b.get_bb()
+
+    if left_a > right_b: return False
+    if right_a < left_b: return False
+    if top_a < bottom_b: return False
+    if bottom_a > top_b: return False
+
+    return True
