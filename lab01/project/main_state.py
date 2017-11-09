@@ -2,6 +2,7 @@ from pico2d import*
 import random
 import game_framework
 import title_state
+import gameover_state
 
 class Player:
     
@@ -18,7 +19,7 @@ class Player:
     UP_RUN_STATE, UP_IDLE_STATE, RUN_STATE, IDLE_STATE = 0,1,2,3
     
     def __init__(self):
-        self.x,self.y = 400,90
+        self.x,self.y = 500,90
         self.frame = random.randint(0,2)
         self.state= 3
         self.index = 0
@@ -40,8 +41,13 @@ class Player:
             self.x = min(1000, self.x+distance)
         elif (self.index,self.state)==(self.RIGHT,self.UP_RUN_STATE):
             self.x = min(1000, self.x+distance)
-        
 
+    def get_bb(self):
+        return self.x-25, self.y-75, self.x+50, self.y+50
+
+    def draw_bb(self):
+        draw_rectangle(*self.get_bb())
+        
     def draw(self):
         self.image.clip_draw(self.frame*100,self.state*150,100,150,self.x,self.y)
         
@@ -92,19 +98,61 @@ class Player:
                     self.state = self.IDLE_STATE
                     #print("멈춰")
 
+        elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_UP):
+                  if(self.state==2):
+                     self.state = self.UP_RUN_STATE
+                     #print("총구위로올리고 전진")
+        elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_DOWN):
+                  if (self.state==0):
+                     self.state = self.RUN_STATE
+                     #print("총구내리고 전진")
+                    
 class Boss:
+    
+    PIXEL_PER_METER = (10.0/0.3)
+    RUN_SPEED_KMPH = 30.0
+    RUN_SPEED_MPM = (RUN_SPEED_KMPH * 1000.0/60.0)
+    RUN_SPEED_MPS = (RUN_SPEED_MPM / 60.0)
+    RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
+
+    LEFT, RIGHT = 1,2
+    
     def __init__(self):
         self.x,self.y=0,300
         self.frame = 0
+        self.index = 0
         self.image=load_image('boss_sheet2.png')
 
-    def update(self):
+    def update(self,frame_time):
+        distance = Boss.RUN_SPEED_PPS*frame_time
         self.frame=random.randint(0,8)
-        self.x=self.x+1
+        
+        if(self.index == self.LEFT):
+            self.x = max(0, self.x+1+distance)
+        elif(self.index == self.RIGHT):
+            self.x = max(0, self.x+14-distance)
+        else:
+            self.x=self.x+10
                              
     def draw(self):
         self.image.clip_draw(self.frame*600,0,600,600,self.x,self.y)
-        
+
+    def get_bb(self):
+        return self.x-300, self.y-300, self.x+250, self.y+300
+
+    def draw_bb(self):
+        draw_rectangle(*self.get_bb())
+
+    def handle_event(self, event):
+        if(event.type, event.key) == (SDL_KEYDOWN, SDLK_LEFT):
+            self.index = self.LEFT
+        elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_RIGHT):
+            self.index = self.RIGHT                                                     
+        elif (event.type, event.key) == (SDL_KEYUP, SDLK_LEFT):
+            self.index = 0
+        elif (event.type, event.key) == (SDL_KEYUP, SDLK_RIGHT):
+            self.index = 0
+      
 
 class Background:
     SCROLL_SPEED_PPS = 10
@@ -138,7 +186,7 @@ class Background:
             elif event.key == SDLK_RIGHT:self.speed-=Background.SCROLL_SPEED_PPS
 
 class Road:
-    SCROLL_SPEED_PPS = 100
+    SCROLL_SPEED_PPS = 200
     
     def __init__(self):
         self.image=load_image('road.png')
@@ -186,6 +234,17 @@ class Ruin:
         return self.x-40, self.y-50,self.x+40,self.y+50
         
 
+def collide(a,b):
+    left_a, bottom_a, right_a, top_a = a.get_bb()
+    left_b, bottom_b, right_b, top_b = b.get_bb()
+
+    if left_a > right_b: return False
+    if right_a < left_b: return False
+    if top_a < bottom_b: return False
+    if bottom_a > top_b: return False
+
+    return True
+
 def enter():
     global bg, road, boss, player, ruin, ruins
     player = Player()
@@ -213,6 +272,7 @@ def handle_events():
             game_framework.change_state(title_state)
         else:
             player.handle_event(event)
+            boss.handle_event(event)
             bg.handle_event(event)
             road.handle_event(event)
 
@@ -227,9 +287,11 @@ def get_frame_time():
 def update():
     frame_time = get_frame_time()
     player.update(frame_time)
-    boss.update()
+    boss.update(frame_time)
     bg.update(frame_time)
     road.update(frame_time)
+    if collide(player, boss):
+        game_framework.change_state(gameover_state)
     #for ruin in ruins:
     #    ruin.update()
         
@@ -238,19 +300,10 @@ def draw():
     bg.draw()
     road.draw()
     player.draw()
+    #player.draw_bb()
     #for ruin in ruins:
     #    ruin.draw()
     boss.draw()
+    #boss.draw_bb()
     update_canvas()
     delay(0.05)
-
-def collide(a,b):
-    left_a, bottom_a, right_a, top_a = a.get_bb()
-    left_b, bottom_b, right_b, top_b = b.get_bb()
-
-    if left_a > right_b: return False
-    if right_a < left_b: return False
-    if top_a < bottom_b: return False
-    if bottom_a > top_b: return False
-
-    return True
