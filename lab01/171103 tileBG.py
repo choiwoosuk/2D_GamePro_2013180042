@@ -1,8 +1,58 @@
 from pico2d import*
 import random
 import time
+import json
 #시간함수
 import numbers
+
+canvasWidth= 800
+canvasHeight = 600
+
+class TileBackground:
+    def __init__(self,filename, width, height):
+        f = open(filename)
+        self.map = json.load(f)
+        self.x=0
+        self.y=0
+        self.canvasWidth = width
+        self.canvasHeight = height
+        #image_filename = self.map['tilesets'][0]['image']
+        #self.image = load_image(image_filename)
+        self.image = load_image('tmw_desert_spacing.png')
+
+
+    def draw(self):
+        map_width = self.map['width']
+        map_height = self.map['height']
+        data = self.map['layers'][0]['data']
+        tileset = self.map['tilesets'][0]
+        tile_width = tileset['tilewidth']
+        tile_height = tileset['tileheight']
+        margin = tileset['margin']
+        spacing = tileset['spacing']
+        columns = tileset['columns']
+        dx,dy=0+tile_width/2,0+tile_height/2
+        desty = dy
+        #for y in range(5):
+        while(desty<self.canvasHeight):
+            destx = dx
+            #for x in range(10):
+            while(destx<self.canvasWidth):
+                index = (map_height-y-3)*map_width+x
+                tile = data[index]
+                tx = (tile -1) % columns
+                ty = (tile -1) // columns
+                #// - 나눗셈후 소수점 버리는 연산
+                srcx = margin + tx * (tile_width + spacing)
+                srcy = self.image.h - (margin + ty * (tile_height + spacing)-1)
+                #(srcx, srcy, tile_width, tile_height)
+                #(destx,desty)
+                self.image.clip_draw(srcx,srcy,tile_widht,tile_height,destx,desty)
+                destx +=tile_width
+            desty +=tile_height
+
+    def update(self):
+        pass
  
 class Boy:
 
@@ -56,8 +106,16 @@ class Boy:
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_RIGHT):
             if self.state in(self.RIGHT_RUN, self.LEFT_RUN):
                 self.state = self.RIGHT_STAND
+ 
+class Grass:
+    def __init__(self):
+        self.image=load_image('grass.png')
+    def draw(self):
+        self.image.draw(400,30)
+
 
 class Background:
+
     SCROLL_SPEED_PPS = 100
     
     def __init__(self):
@@ -65,31 +123,26 @@ class Background:
         self.x=0
         self.speed=0
         self.left=0
-        self.screen_width = 800
-        self.screen_height = 600
+        self.screen_width=800
+        self.screen_height=600
 
-    def update(self, frame_time):
-        self.left = (self.left*self.speed)%self.image.w
-        
     def draw(self):
         x= int(self.left)
         w= min(self.image.w-x,self.screen_width)
         self.image.clip_draw_to_origin(x,0,w,self.screen_height,0,0)
         self.image.clip_draw_to_origin(0,0,self.screen_width-w,self.screen_height,w,0)
 
+    def update(self, frame_time):
+        self.left = (self.left+frame_time*self.speed)%self.image.w
+
     def handle_event(self,event):
         if event.type == SDL_KEYDOWN:
-            if event.key == SDLK_LEFT: self.speed-=Background.SCROLL_SPEED_PPS
+            if event.key == SDLK_LEFT:self.speed-=Background.SCROLL_SPEED_PPS
             elif event.key == SDLK_RIGHT:self.speed+=Background.SCROLL_SPEED_PPS
         if event.type==SDL_KEYUP:
             if event.key == SDLK_LEFT:self.speed+=Background.SCROLL_SPEED_PPS
             elif event.key == SDLK_RIGHT:self.speed-=Background.SCROLL_SPEED_PPS
- 
-class Grass:
-    def __init__(self):
-        self.image=load_image('grass.png')
-    def draw(self):
-        self.image.draw(400,30)
+
  
 def handle_events():
     global running
@@ -117,7 +170,8 @@ def get_frame_time():
 open_canvas()
 grass = Grass()
 boy=Boy()
-bg=Background()
+bg2 = TileBackground('json.json', canvasWidth, canvasHeight)
+bg = Background()
 team = [Boy() for i in range(1)]
  
 global running
@@ -128,12 +182,13 @@ start_time=get_time()
 while(running):
     frame_time = get_frame_time()
     handle_events()
-    bg.update(frame_time)
     for boy in team:
         boy.update(frame_time)
+    bg.update(frame_time)
  
     clear_canvas()
-    bg.draw()
+    #bg.draw()
+    bg2.draw()
     grass.draw()
     for boy in team:
         boy.draw()

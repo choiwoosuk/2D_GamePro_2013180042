@@ -3,90 +3,100 @@ import random
 import game_framework
 import title_state
 
-class Boy:
-    image = None
-    
-    LEFT_RUN, RIGHT_RUN, LEFT_STAND, RIGHT_STAND = 0,1,2,3
-    
-    def __init__(self):
-        self.x,self.y = 400,90
-        self.frame = random.randint(0,7)
-        self.state=3
-        self.index = 0
-        
-        if Boy.image == None:
-            Boy.image = load_image('animation_sheet.png')
-
-    def update(self):
-        self.frame = (self.frame+1)%8
-        if self.state == self.RIGHT_RUN:
-            self.x = min(1200, self.x+5)
-        elif self.state == self.LEFT_RUN:
-            self.x = max(0, self.x-5)
-
-    def draw(self):
-        self.image.clip_draw(self.frame*100,self.state*100,100,100,self.x,self.y)
-
-    def handle_event(self, event):
-        if(event.type, event.key) == (SDL_KEYDOWN, SDLK_LEFT):
-            if self.state in (self.RIGHT_STAND, self.LEFT_STAND):
-                self.state = self.LEFT_RUN
-        elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_RIGHT):
-            if self.state in(self.RIGHT_STAND, self.LEFT_STAND):
-                self.state = self.RIGHT_RUN
-        elif (event.type, event.key) == (SDL_KEYUP, SDLK_LEFT):
-            if self.state in(self.LEFT_RUN, self.RIGHT_RUN):
-                self.state = self.LEFT_STAND
-        elif (event.type, event.key) == (SDL_KEYUP, SDLK_RIGHT):
-            if self.state in(self.RIGHT_RUN, self.LEFT_RUN):
-                self.state = self.RIGHT_STAND
-
 class Player:
+    
+    PIXEL_PER_METER = (10.0/0.3)
+    RUN_SPEED_KMPH = 10.0
+    RUN_SPEED_MPM = (RUN_SPEED_KMPH * 1000.0/60.0)
+    RUN_SPEED_MPS = (RUN_SPEED_MPM / 60.0)
+    RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
+    
     image = None
 
     LEFT, RIGHT = 1,2
 
-    GUN_UP, RUN_STATE, IDLE_STATE = 0,1,2
+    UP_RUN_STATE, UP_IDLE_STATE, RUN_STATE, IDLE_STATE = 0,1,2,3
     
     def __init__(self):
         self.x,self.y = 400,90
         self.frame = random.randint(0,2)
-        self.state=2
+        self.state= 3
         self.index = 0
+        self.total_frames=0
 
         if Player.image==None:
             Player.image = load_image('player_sheet.png')
 
-    def update(self):
-        self.frame=(self.frame+1)%3
+    def update(self,frame_time):
+        distance = Player.RUN_SPEED_PPS*frame_time
+        self.total_frames += 1.0
+        self.frame = (self.frame+1)%3
+
         if (self.index,self.state)==(self.LEFT,self.RUN_STATE):
-            self.x = max(0, self.x-5)
+            self.x = max(0, self.x-distance)
+        elif(self.index,self.state)==(self.LEFT,self.UP_RUN_STATE):
+            self.x = max(0, self.x-distance)
         elif (self.index,self.state)==(self.RIGHT,self.RUN_STATE):
-             self.x = min(1200, self.x+5)
+            self.x = min(1000, self.x+distance)
+        elif (self.index,self.state)==(self.RIGHT,self.UP_RUN_STATE):
+            self.x = min(1000, self.x+distance)
         
 
     def draw(self):
         self.image.clip_draw(self.frame*100,self.state*150,100,150,self.x,self.y)
         
     def handle_event(self, event):
+                                                                            #좌우 이동
         if(event.type, event.key) == (SDL_KEYDOWN, SDLK_LEFT):
-            self.state = self.RUN_STATE
-            self.index=self.LEFT
+            if self.state in (self.UP_IDLE_STATE, self.IDLE_STATE):
+                if(self.state==3):
+                    self.state = self.RUN_STATE
+                    #print("전진")
+                elif(self.state==1):
+                    self.state = self.UP_RUN_STATE
+                    #print("총구 올리고 전진")
+                self.index = self.LEFT
         elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_RIGHT):
-            self.state = self.RUN_STATE
-            self.index=self.RIGHT
+               if self.state in (self.UP_IDLE_STATE, self.IDLE_STATE):
+                if(self.state==3):
+                    self.state = self.RUN_STATE
+                    #print("후퇴")
+                elif(self.state==1):
+                    self.state = self.UP_RUN_STATE
+                    #print("총구 올리고 후퇴")
+                self.index = self.RIGHT
+                                                                            #위아래 총구 변경        
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_UP):
-            self.state = self.GUN_UP
+                  if self.state in (self.IDLE_STATE, self.RUN_STATE):
+                     self.state = self.UP_IDLE_STATE
+                     #print("총구위로올려")
+        elif (event.type, event.key) == (SDL_KEYUP, SDLK_DOWN):
+                  if self.state in (self.UP_IDLE_STATE, self.RUN_STATE):
+                     self.state = self.IDLE_STATE
+                     #print("총구내려")
+                                                                            #좌우 이동시 키를 땔경우            
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_LEFT):
-            self.state = self.IDLE_STATE
+            if self.state in (self.UP_RUN_STATE, self.RUN_STATE):
+                if(self.state==0):
+                    self.state = self.UP_IDLE_STATE
+                    #print("총구 올리고 멈춰")
+                elif(self.state==2):
+                    self.state = self.IDLE_STATE
+                    #print("멈춰")
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_RIGHT):
-            self.state = self.IDLE_STATE
+            if self.state in (self.UP_RUN_STATE, self.RUN_STATE):
+                if(self.state==0):
+                    self.state = self.UP_IDLE_STATE
+                    #print("총구 올리고 멈춰")
+                elif(self.state==2):
+                    self.state = self.IDLE_STATE
+                    #print("멈춰")
 
 class Boss:
     def __init__(self):
         self.x,self.y=0,300
         self.frame = 0
-        self.image=load_image('boss_sheet.png')
+        self.image=load_image('boss_sheet2.png')
 
     def update(self):
         self.frame=random.randint(0,8)
@@ -97,17 +107,63 @@ class Boss:
         
 
 class Background:
+    SCROLL_SPEED_PPS = 10
+    
     def __init__(self):
-        self.image=load_image('bg.png')
+        self.image=load_image('bg2.png')
         self.x=0
+        self.speed=0
+        self.left=0
+        self.screen_width = 1200
+        self.screen_height = 600
+        self.bgm=load_music('contra.mp3')
+        self.bgm.set_volume(64)
+        self.bgm.repeat_play()
 
-    def update(self):
-        self.x=self.x-2
+    def update(self, frame_time):
+        self.left = (self.left+frame_time*self.speed)%self.image.w
         
     def draw(self):
-        self.image.draw(600+self.x,300)
-        self.image.draw(1800+self.x,300)
-        self.image.draw(3000+self.x,300)
+        x= int(self.left)
+        w= min(self.image.w-x,self.screen_width)
+        self.image.clip_draw_to_origin(x,0,w,self.screen_height,0,0)
+        self.image.clip_draw_to_origin(0,0,self.screen_width-w,self.screen_height,w,0)
+
+    def handle_event(self,event):
+        if event.type == SDL_KEYDOWN:
+            if event.key == SDLK_LEFT: self.speed-=Background.SCROLL_SPEED_PPS
+            elif event.key == SDLK_RIGHT:self.speed+=Background.SCROLL_SPEED_PPS
+        if event.type==SDL_KEYUP:
+            if event.key == SDLK_LEFT:self.speed+=Background.SCROLL_SPEED_PPS
+            elif event.key == SDLK_RIGHT:self.speed-=Background.SCROLL_SPEED_PPS
+
+class Road:
+    SCROLL_SPEED_PPS = 100
+    
+    def __init__(self):
+        self.image=load_image('road.png')
+        self.x=0
+        self.speed=0
+        self.left=0
+        self.screen_width = 1200
+        self.screen_height = 600
+
+    def update(self, frame_time):
+        self.left = (self.left+frame_time*self.speed)%self.image.w
+        
+    def draw(self):
+        x= int(self.left)
+        w= min(self.image.w-x,self.screen_width)
+        self.image.clip_draw_to_origin(x,0,w,self.screen_height,0,0)
+        self.image.clip_draw_to_origin(0,0,self.screen_width-w,self.screen_height,w,0)
+
+    def handle_event(self,event):
+        if event.type == SDL_KEYDOWN:
+            if event.key == SDLK_LEFT: self.speed-=Road.SCROLL_SPEED_PPS
+            elif event.key == SDLK_RIGHT:self.speed+=Road.SCROLL_SPEED_PPS
+        if event.type==SDL_KEYUP:
+            if event.key == SDLK_LEFT:self.speed+=Road.SCROLL_SPEED_PPS
+            elif event.key == SDLK_RIGHT:self.speed-=Road.SCROLL_SPEED_PPS
 
 class Ruin:
     image = None
@@ -131,16 +187,18 @@ class Ruin:
         
 
 def enter():
-    global bg, boss, player, ruin, ruins
+    global bg, road, boss, player, ruin, ruins
     player = Player()
     boss = Boss()
     bg = Background()
+    road = Road()
     ruin = Ruin()
     ruins = [Ruin() for i in range(1)]
 
 def exit():
-    global bg, boss, player, ruin, ruins
+    global bg, road, boss, player, ruin, ruins
     del(bg)
+    del(road)
     del(boss)
     del(player)
     del(ruin)
@@ -155,20 +213,33 @@ def handle_events():
             game_framework.change_state(title_state)
         else:
             player.handle_event(event)
+            bg.handle_event(event)
+            road.handle_event(event)
+
+start_time = 0.0
+def get_frame_time():
+    global start_time
+
+    frame_time = get_time() - start_time
+    start_time += frame_time
+    return frame_time   
 
 def update():
-    player.update()
+    frame_time = get_frame_time()
+    player.update(frame_time)
     boss.update()
-    bg.update()
-    for ruin in ruins:
-        ruin.update()
+    bg.update(frame_time)
+    road.update(frame_time)
+    #for ruin in ruins:
+    #    ruin.update()
         
 def draw():
     clear_canvas()
     bg.draw()
+    road.draw()
     player.draw()
-    for ruin in ruins:
-        ruin.draw()
+    #for ruin in ruins:
+    #    ruin.draw()
     boss.draw()
     update_canvas()
     delay(0.05)
