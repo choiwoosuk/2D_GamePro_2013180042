@@ -77,9 +77,11 @@ class Player:
                      self.state = self.UP_IDLE_STATE
                      #print("총구위로올려")
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_DOWN):
-                  if self.state in (self.UP_IDLE_STATE, self.RUN_STATE):
-                     self.state = self.IDLE_STATE
-                     #print("총구내려")
+            if (self.state==1):
+                self.state = self.IDLE_STATE
+            elif self.state in (self.UP_IDLE_STATE, self.RUN_STATE):
+                self.state = self.RUN_STATE
+                #print("총구내려")
                                                                             #좌우 이동시 키를 땔경우            
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_LEFT):
             if self.state in (self.UP_RUN_STATE, self.RUN_STATE):
