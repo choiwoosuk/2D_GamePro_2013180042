@@ -108,6 +108,8 @@ class Player:
                   if (self.state==0):
                      self.state = self.RUN_STATE
                      #print("총구내리고 전진")
+        #elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_z):
+            
                     
 class Boss:
     
@@ -215,27 +217,60 @@ class Road:
             if event.key == SDLK_LEFT:self.speed+=Road.SCROLL_SPEED_PPS
             elif event.key == SDLK_RIGHT:self.speed-=Road.SCROLL_SPEED_PPS
 
-class Ruin:
+class Car:
+
+    PIXEL_PER_METER = (10.0/0.3)
+    RUN_SPEED_KMPH = 30.0
+    RUN_SPEED_MPM = (RUN_SPEED_KMPH * 1000.0/60.0)
+    RUN_SPEED_MPS = (RUN_SPEED_MPM / 60.0)
+    RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
+
+    LEFT, RIGHT = 1,2
+
     image = None
 
     def __init__(self):
-        self.x,self.y=random.randint(800,1200),90
-        self.frame=random.randint(0,3)
-        
-        if Ruin.image == None:
-            Ruin.image=load_image('ruins.png')
+        self.x,self.y=random.randint(800,1200),80
+        self.speed=0
+        self.index=0
+        if Car.image==None:
+            Car.image = load_image('cars.png')
 
-    def update(self):
-        self.x=self.x-2
+    def update(self, frame_time):
+        distance = Car.RUN_SPEED_PPS*frame_time
+        
+        if(self.index == self.LEFT):
+            self.x = self.x+distance
+        elif(self.index == self.RIGHT):
+            self.x = self.x-distance
 
     def draw(self):
-        self.image.clip_draw(self.frame*80,0,80,100,self.x,self.y)
-        
+        dist = 0
+        frame = 0
+        for i in range (30):
+            self.image.clip_draw(frame,0,300,150,self.x+dist,self.y)
+            dist=dist+1600
+            frame=frame+300
+            if(frame==900):
+                frame=0
 
+            
+    def handle_event(self,event):
+        if(event.type, event.key) == (SDL_KEYDOWN, SDLK_LEFT):
+            self.index = self.LEFT
+        elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_RIGHT):
+            self.index = self.RIGHT                                                     
+        elif (event.type, event.key) == (SDL_KEYUP, SDLK_LEFT):
+            self.index = 0
+        elif (event.type, event.key) == (SDL_KEYUP, SDLK_RIGHT):
+            self.index = 0
+        
     def get_bb(self):
-        return self.x-40, self.y-50,self.x+40,self.y+50
+        return self.x-145, self.y-75,self.x+145,self.y+50
+    
+    def draw_bb(self):
+        draw_rectangle(*self.get_bb())
         
-
 def collide(a,b):
     left_a, bottom_a, right_a, top_a = a.get_bb()
     left_b, bottom_b, right_b, top_b = b.get_bb()
@@ -248,22 +283,20 @@ def collide(a,b):
     return True
 
 def enter():
-    global bg, road, boss, player, ruin, ruins
+    global bg, road, boss, player, car
     player = Player()
     boss = Boss()
     bg = Background()
     road = Road()
-    ruin = Ruin()
-    ruins = [Ruin() for i in range(1)]
+    car = Car()
 
 def exit():
-    global bg, road, boss, player, ruin, ruins
+    global bg, road, boss, player, car
     del(bg)
     del(road)
     del(boss)
     del(player)
-    del(ruin)
-    del(ruins)
+    del(car)
     
 def handle_events():
     events=get_events()
@@ -277,6 +310,7 @@ def handle_events():
             boss.handle_event(event)
             bg.handle_event(event)
             road.handle_event(event)
+            car.handle_event(event)
 
 start_time = 0.0
 def get_frame_time():
@@ -292,6 +326,7 @@ def update():
     boss.update(frame_time)
     bg.update(frame_time)
     road.update(frame_time)
+    car.update(frame_time)
     if collide(player, boss):
         game_framework.change_state(gameover_state)
     #for ruin in ruins:
@@ -303,8 +338,8 @@ def draw():
     road.draw()
     player.draw()
     #player.draw_bb()
-    #for ruin in ruins:
-    #    ruin.draw()
+    car.draw()
+    #car.draw_bb()
     boss.draw()
     #boss.draw_bb()
     update_canvas()
