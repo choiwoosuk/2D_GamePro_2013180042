@@ -23,6 +23,9 @@ class Player:
         self.frame = random.randint(0,2)
         self.state= 3
         self.index = 0
+        self.dir=30
+        self.jumpTime=0
+        self.jump = False
         self.total_frames=0
 
         if Player.image==None:
@@ -42,6 +45,23 @@ class Player:
         elif (self.index,self.state)==(self.RIGHT,self.UP_RUN_STATE):
             self.x = min(1000, self.x+distance)
 
+        if(self.jump==True):
+            self.jumpTime +=frame_time
+            if(self.jumpTime<0.4):
+                self.y += self.dir
+                self.y += 10
+                self.dir-= 1
+            elif (self.jumpTime>=0.4):
+                self.jump=False
+        if(self.jump==False):
+            if(self.y>90):
+                self.y += self.dir
+                self.dir-= 4
+            if (self.y<=90):
+                self.jumpTime=0
+                self.y=90
+                self.dir=30
+            
     def get_bb(self):
         return self.x-25, self.y-75, self.x+50, self.y+50
 
@@ -63,7 +83,7 @@ class Player:
                     #print("총구 올리고 전진")
                 self.index = self.LEFT
         elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_RIGHT):
-               if self.state in (self.UP_IDLE_STATE, self.IDLE_STATE):
+            if self.state in (self.UP_IDLE_STATE, self.IDLE_STATE):
                 if(self.state==3):
                     self.state = self.RUN_STATE
                     #print("후퇴")
@@ -108,7 +128,10 @@ class Player:
                   if (self.state==0):
                      self.state = self.RUN_STATE
                      #print("총구내리고 전진")
-        #elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_z):
+        elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_z):
+            self.jump = True
+        elif (event.type, event.key) == (SDL_KEYUP, SDLK_z):
+            self.jump=False
             
                     
 class Boss:
@@ -153,9 +176,9 @@ class Boss:
         elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_RIGHT):
             self.index = self.RIGHT                                                     
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_LEFT):
-            self.index = 0
+                self.index = 0
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_RIGHT):
-            self.index = 0
+                self.index = 0
       
 
 class Background:
@@ -230,9 +253,11 @@ class Car:
     image = None
 
     def __init__(self):
+        self.temp = 0
         self.x,self.y=random.randint(800,1200),80
         self.speed=0
         self.index=0
+        self.frame=0
         if Car.image==None:
             Car.image = load_image('cars.png')
 
@@ -253,7 +278,6 @@ class Car:
             frame=frame+300
             if(frame==900):
                 frame=0
-
             
     def handle_event(self,event):
         if(event.type, event.key) == (SDL_KEYDOWN, SDLK_LEFT):
