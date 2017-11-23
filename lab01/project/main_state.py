@@ -4,6 +4,8 @@ import game_framework
 import title_state
 import gameover_state
 
+gunFire =  []
+
 class Player:
     
     PIXEL_PER_METER = (10.0/0.3)
@@ -27,6 +29,7 @@ class Player:
         self.jumpTime=0
         self.jump = False
         self.total_frames=0
+        self.life = 3
 
         if Player.image==None:
             Player.image = load_image('player_sheet.png')
@@ -73,7 +76,7 @@ class Player:
         
     def handle_event(self, event):
                                                                             #좌우 이동
-        if(event.type, event.key) == (SDL_KEYDOWN, SDLK_LEFT):
+        if(event.type, event.key) == (SDL_KEYDOWN, SDLK_LEFT):                
             if self.state in (self.UP_IDLE_STATE, self.IDLE_STATE):
                 if(self.state==3):
                     self.state = self.RUN_STATE
@@ -132,7 +135,32 @@ class Player:
             self.jump = True
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_z):
             self.jump=False
+        elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_x):
+            #attack = Bullet()
+            #attack.x,attack.y=self.x,self.y+10
+            #if attack == Bullet():
+            #    gunFire.append(attack)
+            print("총알발사")
             
+class Bullet:
+    def __init__(self):
+        self.x,self.y=0,0
+        self.speed = 500
+        self.image = load_image('bullet.png')
+
+    def update(self,frame_time):
+        distance = self.speed*frame_time
+        self.x = self.x - self.speed
+        if self.y < 0:
+            return True
+        else :
+            return False
+
+    def draw(self):
+        self.image.draw(self.x, self.y)
+
+    def get_bb(self):
+        return self.x-10, self.y-10, self.x+10, self.y+10
                     
 class Boss:
     
@@ -252,12 +280,13 @@ class Car:
 
     image = None
 
-    def __init__(self):
+    def __init__(self,x,y):
         self.temp = 0
-        self.x,self.y=random.randint(800,1200),80
+        #self.x,self.y=random.randint(800,1200),80
+        self.x,self.y= x,y
         self.speed=0
         self.index=0
-        self.frame=0
+        self.frame=random.randint(0,2)*300;
         if Car.image==None:
             Car.image = load_image('cars.png')
 
@@ -270,14 +299,15 @@ class Car:
             self.x = self.x-distance
 
     def draw(self):
-        dist = 0
-        frame = 0
-        for i in range (30):
-            self.image.clip_draw(frame,0,300,150,self.x+dist,self.y)
-            dist=dist+1600
-            frame=frame+300
-            if(frame==900):
-                frame=0
+        self.image.clip_draw(self.frame,0,300,150,self.x,self.y)
+        #dist = 0
+        #frame = 0
+        #for i in range (30):
+        #    self.image.clip_draw(frame,0,300,150,self.x+dist,self.y)
+        #    dist=dist+1600
+        #    frame=frame+300
+        #    if(frame==900):
+        #        frame=0
             
     def handle_event(self,event):
         if(event.type, event.key) == (SDL_KEYDOWN, SDLK_LEFT):
@@ -290,7 +320,8 @@ class Car:
             self.index = 0
         
     def get_bb(self):
-        return self.x-145, self.y-75,self.x+145,self.y+50
+        return self.x-100, self.y-75,self.x+100,self.y+50
+            
     
     def draw_bb(self):
         draw_rectangle(*self.get_bb())
@@ -307,20 +338,26 @@ def collide(a,b):
     return True
 
 def enter():
-    global bg, road, boss, player, car
+    global bg, road, boss, player, bullet, car, cars
     player = Player()
     boss = Boss()
+    bullet = Bullet()
     bg = Background()
     road = Road()
-    car = Car()
+    car = Car(1200,80)
+    cars = [Car(i*1200,80) for i in range(30)]
+    #for i in range(30):
+        #car = Car(i*1200,80)
 
 def exit():
-    global bg, road, boss, player, car
+    global bg, road, boss, player, bullet, car, cars
     del(bg)
     del(road)
     del(boss)
     del(player)
     del(car)
+    del(cars)
+    del(bullet)
     
 def handle_events():
     events=get_events()
@@ -334,7 +371,8 @@ def handle_events():
             boss.handle_event(event)
             bg.handle_event(event)
             road.handle_event(event)
-            car.handle_event(event)
+            for car in cars:
+                car.handle_event(event)
 
 start_time = 0.0
 def get_frame_time():
@@ -350,9 +388,17 @@ def update():
     boss.update(frame_time)
     bg.update(frame_time)
     road.update(frame_time)
-    car.update(frame_time)
+    bullet.update(frame_time)
+    for car in cars:
+        car.update(frame_time)
+    for car in cars:
+        if collide(player, car):
+            print("부딪힘")
+            cars.remove(car)
     if collide(player, boss):
         game_framework.change_state(gameover_state)
+    #if collide(player, car):
+    #    game_framework.change_state(gameover_state)
     #for ruin in ruins:
     #    ruin.update()
         
@@ -361,9 +407,12 @@ def draw():
     bg.draw()
     road.draw()
     player.draw()
+    bullet.draw()
     #player.draw_bb()
-    car.draw()
-    #car.draw_bb()
+    for car in cars:
+        car.draw()
+    #for car in cars:
+    #    car.draw_bb()
     boss.draw()
     #boss.draw_bb()
     update_canvas()
