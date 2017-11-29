@@ -4,8 +4,6 @@ import game_framework
 import title_state
 import gameover_state
 
-gunFire =  []
-
 class Player:
     
     PIXEL_PER_METER = (10.0/0.3)
@@ -29,7 +27,8 @@ class Player:
         self.jumpTime=0
         self.jump = False
         self.total_frames=0
-        self.life = 3
+        self.life = 4
+        self.angle = False
 
         if Player.image==None:
             Player.image = load_image('player_sheet.png')
@@ -56,6 +55,7 @@ class Player:
                 self.dir-= 1
             elif (self.jumpTime>=0.4):
                 self.jump=False
+                
         if(self.jump==False):
             if(self.y>90):
                 self.y += self.dir
@@ -80,80 +80,99 @@ class Player:
             if self.state in (self.UP_IDLE_STATE, self.IDLE_STATE):
                 if(self.state==3):
                     self.state = self.RUN_STATE
+                    self.angle=False
                     #print("전진")
                 elif(self.state==1):
                     self.state = self.UP_RUN_STATE
+                    self.angle=True
                     #print("총구 올리고 전진")
                 self.index = self.LEFT
         elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_RIGHT):
             if self.state in (self.UP_IDLE_STATE, self.IDLE_STATE):
                 if(self.state==3):
                     self.state = self.RUN_STATE
+                    self.angle=False
                     #print("후퇴")
                 elif(self.state==1):
                     self.state = self.UP_RUN_STATE
+                    self.angle=True
                     #print("총구 올리고 후퇴")
                 self.index = self.RIGHT
                                                                             #위아래 총구 변경        
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_UP):
                   if self.state in (self.IDLE_STATE, self.RUN_STATE):
                      self.state = self.UP_IDLE_STATE
+                     self.angle=True
                      #print("총구위로올려")
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_DOWN):
             if (self.state==1):
                 self.state = self.IDLE_STATE
             elif self.state in (self.UP_IDLE_STATE, self.RUN_STATE):
                 self.state = self.RUN_STATE
+                self.angle=False
                 #print("총구내려")
                                                                             #좌우 이동시 키를 땔경우            
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_LEFT):
             if self.state in (self.UP_RUN_STATE, self.RUN_STATE):
                 if(self.state==0):
                     self.state = self.UP_IDLE_STATE
+                    self.angle=True
                     #print("총구 올리고 멈춰")
                 elif(self.state==2):
                     self.state = self.IDLE_STATE
+                    self.angle=False
                     #print("멈춰")
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_RIGHT):
             if self.state in (self.UP_RUN_STATE, self.RUN_STATE):
                 if(self.state==0):
                     self.state = self.UP_IDLE_STATE
+                    self.angle=True
                     #print("총구 올리고 멈춰")
                 elif(self.state==2):
                     self.state = self.IDLE_STATE
+                    self.angle=False
                     #print("멈춰")
 
         elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_UP):
                   if(self.state==2):
                      self.state = self.UP_RUN_STATE
+                     self.angle=True
                      #print("총구위로올리고 전진")
         elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_DOWN):
                   if (self.state==0):
                      self.state = self.RUN_STATE
+                     self.angle=False
                      #print("총구내리고 전진")
         elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_z):
             self.jump = True
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_z):
             self.jump=False
-        elif (event.type, event.key) == (SDL_KEYDOWN, SDLK_x):
-            #attack = Bullet()
-            #attack.x,attack.y=self.x,self.y+10
-            #if attack == Bullet():
-            #    gunFire.append(attack)
-            print("총알발사")
-            
-class Bullet:
-    def __init__(self):
-        self.x,self.y=0,0
-        self.speed = 500
-        self.image = load_image('bullet.png')
 
-    def update(self,frame_time):
-        distance = self.speed*frame_time
-        self.x = self.x - self.speed
-        if self.y < 0:
+class Bullet:
+
+    PIXEL_PER_METER = (10.0/0.3)
+    RUN_SPEED_KMPH = 105.0
+    RUN_SPEED_MPM = (RUN_SPEED_KMPH * 1000.0/60.0)
+    RUN_SPEED_MPS = (RUN_SPEED_MPM / 60.0)
+    RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
+
+    image = None
+    
+    def __init__(self,x,y):
+        self.x,self.y=x,y
+        if Bullet.image==None:
+            Bullet.image = load_image('bullet.png')
+
+    def update(self,frame_time,angleOn):    
+        distance = self.RUN_SPEED_PPS * frame_time
+        if(angleOn==False):
+            self.x -= distance
+        elif(angleOn == True):
+            self.x -=distance
+            self.y +=distance
+        if self.x < 0:
             return True
-        else :
+        else:
             return False
 
     def draw(self):
@@ -290,6 +309,9 @@ class Car:
         if Car.image==None:
             Car.image = load_image('cars.png')
 
+    def explosion(self):
+        self.explo.play()
+
     def update(self, frame_time):
         distance = Car.RUN_SPEED_PPS*frame_time
         
@@ -337,35 +359,52 @@ def collide(a,b):
 
     return True
 
+bullet = None
+BULLET = None
+bulletOn = False
+bulletTime = 0
+
 def enter():
-    global bg, road, boss, player, bullet, car, cars
+    global bg, road, boss, player, car, cars
+    global BULLET
+    
     player = Player()
     boss = Boss()
-    bullet = Bullet()
     bg = Background()
     road = Road()
     car = Car(1200,80)
     cars = [Car(i*1200,80) for i in range(30)]
+
+    BULLET = []
     #for i in range(30):
         #car = Car(i*1200,80)
 
 def exit():
-    global bg, road, boss, player, bullet, car, cars
+    global bg, road, boss, player, car, cars
+    global BULLET
+    
     del(bg)
     del(road)
     del(boss)
     del(player)
     del(car)
     del(cars)
-    del(bullet)
+
+    del(BULLET)
     
 def handle_events():
+    global bulletOn
+    
     events=get_events()
     for event in events:
         if event.type==SDL_QUIT:
             game_framework.quit()
         elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
             game_framework.change_state(title_state)
+        elif event.type == SDL_KEYDOWN and event.key == SDLK_x:
+            bulletOn = True
+        elif event.type == SDL_KEYUP and event.key == SDLK_x:
+            bulletOn = False
         else:
             player.handle_event(event)
             boss.handle_event(event)
@@ -375,6 +414,7 @@ def handle_events():
                 car.handle_event(event)
 
 start_time = 0.0
+
 def get_frame_time():
     global start_time
 
@@ -383,19 +423,40 @@ def get_frame_time():
     return frame_time   
 
 def update():
+    global bullet, bulletOn
+    global bulletTime
     frame_time = get_frame_time()
+
+    bulletTime +=frame_time*10
+    
     player.update(frame_time)
     boss.update(frame_time)
     bg.update(frame_time)
-    road.update(frame_time)
-    bullet.update(frame_time)
+    road.update(frame_time)    
     for car in cars:
         car.update(frame_time)
+
+
+    if bulletOn and bulletTime > 3:
+        bullet = Bullet(player.x,player.y)
+        BULLET.append(bullet)
+        bulletTime = 0
+
+    for bullet in BULLET:
+        isDel = bullet.update(frame_time,player.angle)
+        if isDel == True:
+            BULLET.remove(bullet)
+
     for car in cars:
         if collide(player, car):
-            print("부딪힘")
+            player.life=player.life-1
+            print("부딪힘. 남은 라이프:", player.life)
             cars.remove(car)
-    if collide(player, boss):
+    for bullet in BULLET:
+        if collide(bullet,boss):
+            BULLET.remove(bullet)
+    
+    if collide(player, boss) or player.life<=0:
         game_framework.change_state(gameover_state)
     #if collide(player, car):
     #    game_framework.change_state(gameover_state)
@@ -407,7 +468,8 @@ def draw():
     bg.draw()
     road.draw()
     player.draw()
-    bullet.draw()
+    for bullet in BULLET:
+        bullet.draw()
     #player.draw_bb()
     for car in cars:
         car.draw()
