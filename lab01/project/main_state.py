@@ -157,11 +157,18 @@ class Bullet:
     RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
 
     image = None
+    gun_sound = None
     
     def __init__(self,x,y):
         self.x,self.y=x,y
         if Bullet.image==None:
             Bullet.image = load_image('bullet.png')
+        if Bullet.gun_sound == None:
+            Bullet.gun_sound = load_wav('gun_shoot_sound.wav')
+            Bullet.gun_sound.set_volume(64)
+
+    def shoot(self):
+        self.gun_sound.play()
 
     def update(self,frame_time,angleOn):    
         distance = self.RUN_SPEED_PPS * frame_time
@@ -195,6 +202,7 @@ class Boss:
         self.x,self.y=0,300
         self.frame = 0
         self.index = 0
+        self.life = 100
         self.image=load_image('boss_sheet2.png')
 
     def update(self,frame_time):
@@ -205,6 +213,7 @@ class Boss:
             self.x = max(0, self.x+1+distance)
         elif(self.index == self.RIGHT):
             self.x = max(0, self.x+14-distance)
+            #16주면 보스가 더 빨라짐
         else:
             self.x=self.x+10
                              
@@ -212,7 +221,7 @@ class Boss:
         self.image.clip_draw(self.frame*600,0,600,600,self.x,self.y)
 
     def get_bb(self):
-        return self.x-300, self.y-300, self.x+250, self.y+300
+        return self.x-300, self.y-300, self.x+250, self.y+200
 
     def draw_bb(self):
         draw_rectangle(*self.get_bb())
@@ -260,7 +269,7 @@ class Background:
             elif event.key == SDLK_RIGHT:self.speed-=Background.SCROLL_SPEED_PPS
 
 class Road:
-    SCROLL_SPEED_PPS = 200
+    SCROLL_SPEED_PPS = 250
     
     def __init__(self):
         self.image=load_image('road.png')
@@ -298,6 +307,7 @@ class Car:
     LEFT, RIGHT = 1,2
 
     image = None
+    explo_sound = None
 
     def __init__(self,x,y):
         self.temp = 0
@@ -308,9 +318,12 @@ class Car:
         self.frame=random.randint(0,2)*300;
         if Car.image==None:
             Car.image = load_image('cars.png')
+        if Car.explo_sound == None:
+            Car.explo_sound = load_wav('explosion.wav')
+            Car.explo_sound.set_volume(64)
 
-    def explosion(self):
-        self.explo.play()
+    def explosion(self,player):
+        self.explo_sound.play()
 
     def update(self, frame_time):
         distance = Car.RUN_SPEED_PPS*frame_time
@@ -347,7 +360,24 @@ class Car:
     
     def draw_bb(self):
         draw_rectangle(*self.get_bb())
-        
+
+class UI:
+    image = None
+
+    def __init__(self,x):
+        self.x,self.y= x,550
+        self.index=0
+        self.frame=0
+        if UI.image==None:
+            UI.image = load_image('heart.png')
+
+    def update(self, frame_time):
+        if(frame_time%10 > 5):
+            self.frame = (self.frame+1)%2
+
+    def draw(self):
+        self.image.clip_draw(self.frame*50,0,50,50,self.x,self.y)
+
 def collide(a,b):
     left_a, bottom_a, right_a, top_a = a.get_bb()
     left_b, bottom_b, right_b, top_b = b.get_bb()
@@ -363,32 +393,34 @@ bullet = None
 BULLET = None
 bulletOn = False
 bulletTime = 0
+heartBeat = 0
 
 def enter():
-    global bg, road, boss, player, car, cars
+    global bg, road, boss, player, cars, life
     global BULLET
     
     player = Player()
     boss = Boss()
     bg = Background()
     road = Road()
-    car = Car(1200,80)
+    #car = Car(1200,80)
     cars = [Car(i*1200,80) for i in range(30)]
 
     BULLET = []
+    life = [UI(50+i*60) for i in range(4)]
     #for i in range(30):
         #car = Car(i*1200,80)
 
 def exit():
-    global bg, road, boss, player, car, cars
+    global bg, road, boss, player, cars, life
     global BULLET
     
     del(bg)
     del(road)
     del(boss)
     del(player)
-    del(car)
     del(cars)
+    del(life)
 
     del(BULLET)
     
@@ -424,15 +456,19 @@ def get_frame_time():
 
 def update():
     global bullet, bulletOn
-    global bulletTime
+    global bulletTime, heartBeat
     frame_time = get_frame_time()
 
     bulletTime +=frame_time*10
+    heartBeat +=frame_time*10
     
     player.update(frame_time)
     boss.update(frame_time)
     bg.update(frame_time)
-    road.update(frame_time)    
+    road.update(frame_time)
+    for heart in life:
+        heart.update(heartBeat)
+    #life.update(frame_time)
     for car in cars:
         car.update(frame_time)
 
@@ -440,6 +476,7 @@ def update():
     if bulletOn and bulletTime > 3:
         bullet = Bullet(player.x,player.y)
         BULLET.append(bullet)
+        bullet.shoot()
         bulletTime = 0
 
     for bullet in BULLET:
@@ -450,7 +487,9 @@ def update():
     for car in cars:
         if collide(player, car):
             player.life=player.life-1
+            life.remove(heart)
             print("부딪힘. 남은 라이프:", player.life)
+            car.explosion(player)
             cars.remove(car)
     for bullet in BULLET:
         if collide(bullet,boss):
@@ -476,6 +515,9 @@ def draw():
     #for car in cars:
     #    car.draw_bb()
     boss.draw()
+    for heart in life:
+        heart.draw()
+    #life.draw()
     #boss.draw_bb()
     update_canvas()
     delay(0.05)

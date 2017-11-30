@@ -7,12 +7,16 @@ name="TitleState"
 image=None
 
 def enter():
-    global image
+    global image, bgm
     image=load_image('title.png')
+    bgm=load_music('intro.mp3')
+    bgm.set_volume(128)
+    bgm.repeat_play()
 
 def exit():
-    global image
+    global image, bgm
     del(image)
+    del(bgm)
 
 def handle_events():
     events = get_events()

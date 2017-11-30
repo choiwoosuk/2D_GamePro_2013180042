@@ -12,6 +12,9 @@ class Dead:
     def __init__(self):
         self.image=load_image('dead.png')
         self.x,self.y=600,320
+        self.bgm=load_music('over.mp3')
+        self.bgm.set_volume(128)
+        self.bgm.repeat_play()
         self.frame = 0
     def update(self):
         self.frame = (self.frame+1)%2
@@ -25,7 +28,6 @@ def enter():
 
 def exit():
     global image, char
-    del(image)
     del(char)
 
 def handle_events():
