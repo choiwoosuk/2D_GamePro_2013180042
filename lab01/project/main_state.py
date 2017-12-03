@@ -3,6 +3,7 @@ import random
 import game_framework
 import title_state
 import gameover_state
+import gameclear_state
 
 class Player:
     
@@ -29,7 +30,7 @@ class Player:
         self.total_frames=0
         self.life = 4
         self.angle = False
-
+  
         if Player.image==None:
             Player.image = load_image('player_sheet.png')
 
@@ -159,8 +160,12 @@ class Bullet:
     image = None
     gun_sound = None
     
-    def __init__(self,x,y):
+    def __init__(self,x,y,angle):
         self.x,self.y=x,y
+        if(angle==1):
+            self.gunUp = 0
+        elif(angle==0):
+            self.gunUp = 50
         if Bullet.image==None:
             Bullet.image = load_image('bullet.png')
         if Bullet.gun_sound == None:
@@ -172,11 +177,8 @@ class Bullet:
 
     def update(self,frame_time,angleOn):    
         distance = self.RUN_SPEED_PPS * frame_time
-        if(angleOn==False):
-            self.x -= distance
-        elif(angleOn == True):
-            self.x -=distance
-            self.y +=distance
+        self.x -=distance
+        self.y +=self.gunUp
         if self.x < 0:
             return True
         else:
@@ -202,18 +204,18 @@ class Boss:
         self.x,self.y=0,300
         self.frame = 0
         self.index = 0
-        self.life = 100
+        self.life = 140
         self.image=load_image('boss_sheet2.png')
 
     def update(self,frame_time):
         distance = Boss.RUN_SPEED_PPS*frame_time
+
         self.frame=random.randint(0,8)
-        
         if(self.index == self.LEFT):
             self.x = max(0, self.x+1+distance)
         elif(self.index == self.RIGHT):
-            self.x = max(0, self.x+14-distance)
-            #16주면 보스가 더 빨라짐
+            self.x = max(0, self.x+16-distance)
+            #16주면 보스가 더 빨라지고 14주면 캐릭터가 더 빨라짐
         else:
             self.x=self.x+10
                              
@@ -474,7 +476,10 @@ def update():
 
 
     if bulletOn and bulletTime > 3:
-        bullet = Bullet(player.x,player.y)
+        if(player.angle==False):
+            bullet = Bullet(player.x,player.y,1)
+        elif(player.angle==True):
+            bullet = Bullet(player.x,player.y,0)
         BULLET.append(bullet)
         bullet.shoot()
         bulletTime = 0
@@ -494,9 +499,19 @@ def update():
     for bullet in BULLET:
         if collide(bullet,boss):
             BULLET.remove(bullet)
+            if(player.angle == False):
+                boss.life = boss.life -1
+            elif(player.angle == True):
+                boss.life = boss.life -2
+            #print("보스 체력: ",boss.life)
     
     if collide(player, boss) or player.life<=0:
         game_framework.change_state(gameover_state)
+        return 0
+
+    if boss.life < 0:
+        game_framework.change_state(gameclear_state)
+        
     #if collide(player, car):
     #    game_framework.change_state(gameover_state)
     #for ruin in ruins:
