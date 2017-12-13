@@ -14,6 +14,7 @@ class Player:
     RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
     
     image = None
+    scream = None
 
     LEFT, RIGHT = 1,2
 
@@ -33,6 +34,13 @@ class Player:
   
         if Player.image==None:
             Player.image = load_image('player_sheet.png')
+
+        if Player.scream == None:
+            Player.scream = load_wav('scream.wav')
+            Player.scream.set_volume(64)
+
+    def Scream(self):
+        self.scream.play()
 
     def update(self,frame_time):
         distance = Player.RUN_SPEED_PPS*frame_time
@@ -237,8 +245,42 @@ class Boss:
                 self.index = 0
         elif (event.type, event.key) == (SDL_KEYUP, SDLK_RIGHT):
                 self.index = 0
-      
 
+class BossBullet:
+    PIXEL_PER_METER = (10.0/0.3)
+    RUN_SPEED_KMPH = 75.0
+    RUN_SPEED_MPM = (RUN_SPEED_KMPH * 1000.0/60.0)
+    RUN_SPEED_MPS = (RUN_SPEED_MPM / 60.0)
+    RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
+
+    image = None
+    shoot = None
+    
+    def __init__(self,x,y):
+        self.x,self.y=x,y
+        if BossBullet.image==None:
+            BossBullet.image = load_image('boss_bullet.png')
+        if BossBullet.shoot == None:
+            BossBullet.shoot = load_wav('bossShoot.wav')
+            BossBullet.shoot.set_volume(64)
+
+    def Shoot(self):
+        self.shoot.play()
+
+    def update(self,frame_time):    
+        distance = self.RUN_SPEED_PPS * frame_time
+        self.x +=distance
+        if self.x > 1200:
+            return True
+        else:
+            return False
+
+    def draw(self):
+        self.image.draw(self.x, self.y)
+
+    def get_bb(self):
+        return self.x-25, self.y-25, self.x+25, self.y+25
+      
 class Background:
     SCROLL_SPEED_PPS = 10
     
@@ -392,14 +434,17 @@ def collide(a,b):
     return True
 
 bullet = None
+bullet2 = None
 BULLET = None
+BULLET2 = None
 bulletOn = False
 bulletTime = 0
+bullet2Time = 0
 heartBeat = 0
 
 def enter():
     global bg, road, boss, player, cars, life
-    global BULLET
+    global BULLET, BULLET2
     
     player = Player()
     boss = Boss()
@@ -409,13 +454,14 @@ def enter():
     cars = [Car(i*1200,80) for i in range(30)]
 
     BULLET = []
+    BULLET2 = []
     life = [UI(50+i*60) for i in range(4)]
     #for i in range(30):
         #car = Car(i*1200,80)
 
 def exit():
     global bg, road, boss, player, cars, life
-    global BULLET
+    global BULLET, BULLET2
     
     del(bg)
     del(road)
@@ -425,6 +471,7 @@ def exit():
     del(life)
 
     del(BULLET)
+    del(BULLET2)
     
 def handle_events():
     global bulletOn
@@ -458,11 +505,13 @@ def get_frame_time():
 
 def update():
     global bullet, bulletOn
-    global bulletTime, heartBeat
+    global bulletTime, bullet2Time, heartBeat
     frame_time = get_frame_time()
 
     bulletTime +=frame_time*10
     heartBeat +=frame_time*10
+
+    bullet2Time +=frame_time*10
     
     player.update(frame_time)
     boss.update(frame_time)
@@ -473,6 +522,17 @@ def update():
     #life.update(frame_time)
     for car in cars:
         car.update(frame_time)
+
+    if bullet2Time > 100:
+        bullet2 = BossBullet(boss.x,random.randint(3,6)*60)
+        BULLET2.append(bullet2)
+        bullet2.Shoot()
+        bullet2Time = 0
+
+    for bullet2 in BULLET2:
+        isDel = bullet2.update(frame_time)
+        if isDel == True:
+            BULLET2.remove(bullet2)
 
 
     if bulletOn and bulletTime > 3:
@@ -493,9 +553,19 @@ def update():
         if collide(player, car):
             player.life=player.life-1
             life.remove(heart)
-            print("부딪힘. 남은 라이프:", player.life)
+            #print("부딪힘. 남은 라이프:", player.life)
             car.explosion(player)
+            player.Scream()
             cars.remove(car)
+
+    for bullet2 in BULLET2:
+        if collide(bullet2,player):
+            player.life=player.life-1
+            life.remove(heart)
+            player.Scream()
+            #print("부딪힘. 남은 라이프:", player.life)
+            BULLET2.remove(bullet2)
+
     for bullet in BULLET:
         if collide(bullet,boss):
             BULLET.remove(bullet)
@@ -524,6 +594,8 @@ def draw():
     player.draw()
     for bullet in BULLET:
         bullet.draw()
+    for bullet2 in BULLET2:
+        bullet2.draw()
     #player.draw_bb()
     for car in cars:
         car.draw()
